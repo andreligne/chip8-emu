@@ -1,18 +1,21 @@
 #ifndef MONITOR_H_
 #define MONITOR_H_
 
-#include "sdl.h"
+#include "SDL.h"
+
+/* Should define some colors here */
 
 /* Variables for the monitor */
 SDL_Surface *g_scr;
+SDL_Event *g_event;
 
 /* Functions for initializing the SDL resources */
-void init_monitor(SDL_Surface *, char *);
+void init_monitor(SDL_Surface **, char *);
 
 /* Functions for freeing all SDL resources */
 void free_monitor(SDL_Surface *);
 
 /* A function which handles the refreshing of the screen */
-void run_monitor(SDL_Surface *);
+void draw_monitor(SDL_Surface *, void *);
 
 #endif

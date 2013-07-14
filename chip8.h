@@ -32,11 +32,11 @@
 typedef struct {
 	uint8_t *memory; // RAM for the machine
 	uint8_t *V; // Data registers
-	uint8_t I; // Points to a specific point in the memory
+	uint16_t I; // Points to a specific point in the memory
 
 	uint16_t *stack; // The stack (16 levels deep)
 
-	uint8_t *display; // The screen matris
+	uint16_t *display; // The screen matris
 	
 	uint8_t stackPointer; // The stack pointer
 	uint16_t pc; // The PC
@@ -56,5 +56,8 @@ void step(chip8_t *);
 
 /* Return the display matrix */
 void *get_display(chip8_t *);
+
+/* Function which steps through the program */
+void run_chip(chip8_t *);
 
 #endif

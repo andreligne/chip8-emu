@@ -3,7 +3,7 @@
 void init_chip(chip8_t *cpu) 
 {
 	// Allocate 4kB of ram
-	cpu->memory = malloc(4096);
+	cpu->memory = malloc(4096); // Allocate 4kB for the memory
 	memset(cpu->memory, 0xFF, 4096);
 
 	// Allocate memory for the register. It has 16 8-bit data registers.
@@ -14,11 +14,25 @@ void init_chip(chip8_t *cpu)
 
 	// Allocate space for the display matris.
 	// The screen is 64x32 pixels wide.
-	cpu->display = malloc(64 * 32);
+	cpu->display = malloc(256); // Got a screen with 64x32 ppx (256 bytes)
 
 	// Set default values for pointers
 	cpu->stackPointer = 0;
 	cpu->pc = 0x200;
+	cpu->I = 0;
+}
+
+/* Free all resources for the cpu */
+void free_chip(chip8_t *cpu)
+{
+	// Free all allocated memory in the chip8_t struct
+	free(cpu->memory);
+	free(cpu->V);
+	free(cpu->stack);
+	free(cpu->display);
+
+	// Free the struct
+	free(cpu);
 }
 
 void load_file(chip8_t *cpu, char *filename)
@@ -189,37 +203,47 @@ void step(chip8_t *cpu)
 			cpu->pc += 2;
 			break;
 		}
-		
 
 		case 0xD000: { // DXYN: Draw a sprite from I to position X, Y
-			printf("Here we're doing some drawing later on...\n");
-
 			/* Parse out the values that's going to be needed */
 			uint8_t width = 8; // This value is always 8
 			uint8_t height = (opcode & 0x000F); // This value is always 8
 			uint8_t x_pos = (opcode & 0x0F00) >> 8;
 			uint8_t y_pos = (opcode & 0x00F0) >> 4;
 
+			printf("Draw a sprite from I width height %i to X,Y.\n", height);
+
 			/* Unset the carry flag before we start */
 			cpu->V[0xF] = 0;
 
+			// Starting position for the drawing
+			// uint16_t *asdf = cpu->display[() + x_pos];
+
 			/* The actual drawing */
 			int _x, _y;
+			_x = _y = 0;
 
-			// Iterate over the rows
-			for (_y = 0; _y < height; _y++) {
-				// The adr for the beginning of sprite in the memory
-				// TODO: Maybe could shift bits instead of a multiplication?
+			// Iterate over the rows of the sprite
+			for (; _y < height; _y++) {
 
-				// Iterate over the column
-				for (_x = 0; _x < width; _x++) {
-					/* Set the bit for this particular pixel */
+				// Get the old rows
 
-					/* If a pixel is flipped from set to unset, 
-					 * set the carry flag VF. Unset otherwise */
-					// TODO: Sounds very weird
-				}
+				// Check if we need to set VF
+				// TODO: Invert the bits and & with it. If not 0xFFFF, set VF
+
+				// Copy over the rows of the sprite to the video memory
 			}
+
+			// Dump the video memory content
+			/*
+			int index = 0;
+			for (; index < (64 * 32); index++) {
+				if ((index % 64) == 0)
+					printf("\n");
+
+				printf("%c", cpu->display[index] ? ' ' : 'x');
+			}
+			*/
 
 			// Move to the next instruction
 			cpu->pc += 2;
@@ -322,4 +346,11 @@ void step(chip8_t *cpu)
 void *get_display(chip8_t *cpu)
 {
 	return cpu->display;
+}
+
+/* Function which steps through the program */
+void run_chip(chip8_t *cpu)
+{
+	for (;;)
+		step(cpu);
 }
