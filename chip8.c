@@ -1,13 +1,8 @@
 #include "chip8.h"
 
-void init_chip(chip8_t *cpu) 
+/* Define the fontset */
+uint8_t c8_fontset[0x80] =
 {
-	// Allocate 4kB of ram
-	cpu->memory = malloc(4096); // Allocate 4kB for the memory
-	memset(cpu->memory, 0x00, 4096);
-
-	// Set the fontset
-	*cpu->memory =
 		0xF0, 0x90, 0x90, 0x90, 0xF0, // 0   
 		0x20, 0x60, 0x20, 0x20, 0x70, // 1
 		0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -24,7 +19,16 @@ void init_chip(chip8_t *cpu)
 		0xE0, 0x90, 0x90, 0x90, 0xE0, // D
 		0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
 		0xF0, 0x80, 0xF0, 0x80, 0x80  // F
-	;
+};
+
+void init_chip(chip8_t *cpu) 
+{
+	// Allocate 4kB of ram
+	cpu->memory = malloc(4096); // Allocate 4kB for the memory
+	memset(cpu->memory, 0x00, 4096);
+
+	// Set the fontset
+	memcpy(cpu->memory, c8_fontset, 0x80);
 
 	// Allocate memory for the register. It has 16 8-bit data registers.
 	cpu->V = malloc(16);
@@ -34,8 +38,8 @@ void init_chip(chip8_t *cpu)
 
 	// Allocate space for the display matris.
 	// The screen is 64x32 pixels wide.
-	cpu->display = malloc(64 * 32); // Got a screen with 64x32 ppx (256 bytes)
-	memset(cpu->display, 0, (64 * 32));
+	cpu->display = (uint8_t *)malloc(64 * 32);
+	memset(cpu->display, 0, 64*32);
 
 	// Set default value for the timers
 	cpu->delay_timer = 0;
@@ -106,7 +110,7 @@ void step(chip8_t *cpu)
 					printf("Clearing the screen.\n"); 
 
 					/* Just set the whole video memory to 0s */
-					memset(cpu->display, 0, sizeof(cpu->display));
+					memset(cpu->display, 0, sizeof(*cpu->display));
 
 					// Move the PC to the next instruction
 					cpu->pc += 2;
@@ -114,7 +118,7 @@ void step(chip8_t *cpu)
 				}
 
 				case 0xEE: { // 00EE: Returns from a subroutine.
-					printf("Returning from a subroutine.\n", (opcode & 0x0FFF));
+					printf("Returning from a subroutine.\n");
 
 					/* Pop the adr off the stack and put as the new PC */
 					cpu->stackPointer--;
@@ -325,21 +329,21 @@ void step(chip8_t *cpu)
 
 			// For each row in the sprite
 			for (_y = 0; _y < height; _y++) {
+				uint8_t line = cpu->memory[cpu->I + _y];
+				
 				// For each pixel
 				for (_x = 0; _x < 8; _x++) {
-					uint8_t pixel = (cpu->memory[cpu->I + _y] >> _x) & 0x1;
-					uint32_t display_index = (32 * (_y + y - 1)) + ((x + _x - 1));
+					uint8_t pixel = line & (0x80 >> _x);
+					uint32_t display_index = (64 * (_y + y)) + (x + _x);
 
 					printf("%c", pixel ? 'x' : ' ');
 
-					if (pixel == 0) {
-						continue;
+					if (pixel != 0) {
+						if (cpu->display[display_index] == 1)
+							cpu->V[0xF] = 1;
+
+						cpu->display[display_index] ^= 1;
 					}
-
-					if (cpu->display[display_index] ^ pixel)
-						cpu->V[0xF] = 0x1;
-
-					cpu->display[display_index] = pixel;
 				}
 
 				printf("\n");
@@ -430,6 +434,10 @@ void step(chip8_t *cpu)
 				// FX29: Sets I to the location of the sprite for the character in VX. 
 				// Characters 0-F (in hexadecimal) are represented by a 4x5 font.
 				case 0x29: {
+					printf("Setting I to the location of char %x.\n", _x);
+
+					// One character takes up 5 bytes
+					cpu->I = _x * 5;
 					break;
 				}
 
@@ -460,7 +468,7 @@ void step(chip8_t *cpu)
 
 				// FX55: Stores V0 to VX in memory starting at address I.
 				case 0x55: {
-					printf("Stores V0...VX in memory at I. (skipped)\n");
+					printf("Stores V0...VX in memory at I.\n");
 
 					uint16_t _x = (opcode & 0x0F00) >> 8;
 					memcpy(&cpu->memory[cpu->I], cpu->V, _x);
@@ -500,8 +508,15 @@ void step(chip8_t *cpu)
 	cpu->delay_timer -= 1;
 }
 
+/* Tick the timers on the cpu */
+void tick(chip8_t *cpu)
+{
+	cpu->delay_timer -= 1;
+	cpu->sound_timer -= 1;
+}
+
 /* Return the display matrix */
-void *get_display(chip8_t *cpu)
+uint8_t *get_display(chip8_t *cpu)
 {
 	return cpu->display;
 }

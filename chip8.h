@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include <string.h>
 
@@ -42,7 +43,8 @@ typedef struct {
 
 	uint16_t *stack; // The stack (16 levels deep)
 
-	uint16_t *display; // The screen matris
+	// The screen matris
+	uint8_t *display; // The screen matris
 
 	// Timers
 	uint16_t sound_timer;
@@ -64,8 +66,11 @@ void load_file(chip8_t *, char *);
 /* Step and handle one instruction into the program */
 void step(chip8_t *);
 
+/* Tick the timers on the cpu */
+void tick(chip8_t *);
+
 /* Return the display matrix */
-void *get_display(chip8_t *);
+uint8_t *get_display(chip8_t *);
 
 /* Function which steps through the program */
 void run_chip(chip8_t *);

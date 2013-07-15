@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 
 #include "monitor.h"
@@ -59,8 +60,11 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		// TODO: Need to tick the timers as well
+		tick(cpu);
 		draw_monitor(g_scr, get_display(cpu));
+
+		// Sleep so we get a fps of 60
+		usleep(160 * 1000);
 	}
 
 	// Stop and the threads

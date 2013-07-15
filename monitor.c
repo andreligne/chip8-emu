@@ -41,20 +41,22 @@ void draw_pixel(uint8_t x, uint8_t y, SDL_Surface *screen)
 
 /* Draw all pixels from the vram to the screen. Runs at a rate of
  * 60Hz (60 fps). */
-void draw_monitor(SDL_Surface *screen, uint8_t *vram)
+void draw_monitor(SDL_Surface *screen, uint8_t *display)
 {
 	// Fill background with black
 	SDL_FillRect(screen, NULL, 0x000000);
 
-	uint32_t index = 0;
-	for (; index < (64 * 32); index++) {
-		if (vram[index] == 0)
-			continue;
+	uint8_t row = 0;
+	for (; row < 32; row++) {
+		uint8_t column = 0;
 
-		uint16_t x = index % 64;
-		uint16_t y = index / 64;
+		// Draw the pixels on the screen
+		for (; column < 64; column++) {
+			uint8_t pixel = display[(64 * row) + column];
+			if (pixel == 0) continue;
 
-		draw_pixel(x, y, screen);
+			draw_pixel(column, row, screen);
+		}
 	}
 
 	// Update the screen buffer
