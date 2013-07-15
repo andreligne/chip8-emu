@@ -194,6 +194,20 @@ void step(chip8_t *cpu)
 			break;
 		}
 
+		case 0x5000: { // 5XY0: Skips the next instruction if VX equals VY.
+			printf("Skipping the next instruction if VX == VY.\n");
+			uint8_t _x = (opcode & 0x0F00) >> 8;
+			uint8_t _y = (opcode & 0x0F00) >> 4;
+
+			if (cpu->V[_x] == cpu->V[_y]) {
+				printf("\tSkipping...\n");
+				cpu->pc += 2;
+			}
+	
+			cpu->pc += 2;
+			break;
+		}
+
 		case 0x6000: { // 6XNN: Sets VX to NN.
 			printf("Setting VX to 0x%x.\n", (opcode & 0x00FF));
 			cpu->V[(opcode & 0x0F00) >> 8] = (opcode & 0x00FF);
