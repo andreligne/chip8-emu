@@ -244,6 +244,13 @@ void step(chip8_t *cpu)
 					break;
 				}
 
+				case 0x1: { // 8XY1: Sets VX to VX or VY.
+					printf("\tSetting VX to VX or VY.\n");
+					cpu->V[_x] |= cpu->V[_y];
+
+					break;
+				}
+
 				case 0x2: { // 8XY2: Sets VX to VX and VY.
 					printf("\tSetting VX to VX and VY.\n");
 					cpu->V[_x] &= cpu->V[_y];
