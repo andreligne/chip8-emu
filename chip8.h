@@ -27,6 +27,12 @@
   0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };*/
 
+/*
+ * 0000 0010
+ * 1010 1010
+ * ---------
+ * 1010 1100
+ */
 
 /* Define a struct that contains the emulator variables */
 typedef struct {
@@ -37,6 +43,10 @@ typedef struct {
 	uint16_t *stack; // The stack (16 levels deep)
 
 	uint16_t *display; // The screen matris
+
+	// Timers
+	uint16_t sound_timer;
+	uint16_t delay_timer;
 	
 	uint8_t stackPointer; // The stack pointer
 	uint16_t pc; // The PC

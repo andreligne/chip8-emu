@@ -24,36 +24,39 @@ void free_monitor(SDL_Surface *screen)
 	SDL_Quit();
 }
 
-/* Draw all pixels from the vram to the screen. Runs at a rate of
- * 60Hz (60 fps). */
-void draw_monitor(SDL_Surface *screen, void *vram)
+/* Draw rectangle at x,y position */
+void draw_pixel(uint8_t x, uint8_t y, SDL_Surface *screen)
 {
-	// Fill the window background with black color
-	SDL_FillRect(screen, NULL, 0x000000);
-
 	// Create a SDL_Rect which will represent a pixel on the screen
 	SDL_Rect pixel;
-	pixel.x = pixel.y = 0;
 	pixel.w = pixel.h = 10;
 
-	int pixel_index = 0;
-	for (; pixel_index < 256; pixel_index++) {
-		// New row dawg
-		if (pixel_index != 0 && ((pixel_index % 64) == 0)) {
-			pixel.x = 0;
-			pixel.y += 10;
-		}
+	// Put the pixel at the right position
+	pixel.x = x * 10;
+	pixel.y = y * 10;
 
-		// Print the SDL_Rect to the screen
-		SDL_FillRect(screen, &pixel, 0xFFFFFFFF);
+	// Print the SDL_Rect to the screen
+	SDL_FillRect(screen, &pixel, 0xFFFFFFFF);
+}
 
-		// Move the rectangle
-		pixel.x += 10;
-		pixel.y += 10;
+/* Draw all pixels from the vram to the screen. Runs at a rate of
+ * 60Hz (60 fps). */
+void draw_monitor(SDL_Surface *screen, uint8_t *vram)
+{
+	// Fill background with black
+	SDL_FillRect(screen, NULL, 0x000000);
+
+	uint32_t index = 0;
+	for (; index < (64 * 32); index++) {
+		if (vram[index] == 0)
+			continue;
+
+		uint16_t x = index % 64;
+		uint16_t y = index / 64;
+
+		draw_pixel(x, y, screen);
 	}
 
 	// Update the screen buffer
 	SDL_Flip(screen);
-
-	return;
 }

@@ -16,14 +16,15 @@ int quiting = 0;
 
 int main(int argc, char *argv[])
 {
-	/* Set some dummy values */
-	argc = 2;
-	argv[1] = "programs/tetris.c8";
 
 	/* Make the user specify which file to open */
 	if (argc != 2) {
 		printf("Usage: chip <filename>\n");
 		return 1;
+
+		/* Set some dummy values */
+		argc = 2;
+		argv[1] = "programs/MAZE.c8";
 	}
 
 	// Initialize the emulator
@@ -49,7 +50,6 @@ int main(int argc, char *argv[])
 			switch (g_event->type)
 			{
 				case SDL_QUIT:
-					printf("Quiting.\n");
 					quiting = 1;
 					break;
 
@@ -59,9 +59,8 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		// draw_monitor(g_scr, get_display(cpu));
-
-		sleep(1 / 60);
+		// TODO: Need to tick the timers as well
+		draw_monitor(g_scr, get_display(cpu));
 	}
 
 	// Stop and the threads
@@ -71,6 +70,8 @@ int main(int argc, char *argv[])
 	// Clean up
 	free_monitor(g_scr);
 	free_chip(cpu);
+
+	printf("Quiting.\n");
 
 	exit(0);
 }

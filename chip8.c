@@ -4,7 +4,27 @@ void init_chip(chip8_t *cpu)
 {
 	// Allocate 4kB of ram
 	cpu->memory = malloc(4096); // Allocate 4kB for the memory
-	memset(cpu->memory, 0xFF, 4096);
+	memset(cpu->memory, 0x00, 4096);
+
+	// Set the fontset
+	*cpu->memory =
+		0xF0, 0x90, 0x90, 0x90, 0xF0, // 0   
+		0x20, 0x60, 0x20, 0x20, 0x70, // 1
+		0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+		0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+		0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+		0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+		0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+		0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+		0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+		0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+		0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+		0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+		0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+		0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+		0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+		0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+	;
 
 	// Allocate memory for the register. It has 16 8-bit data registers.
 	cpu->V = malloc(16);
@@ -14,7 +34,12 @@ void init_chip(chip8_t *cpu)
 
 	// Allocate space for the display matris.
 	// The screen is 64x32 pixels wide.
-	cpu->display = malloc(256); // Got a screen with 64x32 ppx (256 bytes)
+	cpu->display = malloc(64 * 32); // Got a screen with 64x32 ppx (256 bytes)
+	memset(cpu->display, 0, (64 * 32));
+
+	// Set default value for the timers
+	cpu->delay_timer = 0;
+	cpu->sound_timer = 0;
 
 	// Set default values for pointers
 	cpu->stackPointer = 0;
@@ -62,7 +87,7 @@ void load_file(chip8_t *cpu, char *filename)
 void step(chip8_t *cpu)
 {
 	/* Get the next instruction 
-	 * Read the first 8 bits, shift them up and AND with the other 8 bits */
+	 * Read the first 8 bits, shift them up and OR with the other 8 bits */
 	uint16_t opcode = (cpu->memory[cpu->pc] << 8) | cpu->memory[cpu->pc + 1];
 
 	/* Mask out the OPCODE and handle the correct operation
@@ -98,7 +123,7 @@ void step(chip8_t *cpu)
 				}
 
 				default: {
-					printf("Unimplemented 0x00%X. Exiting...\n", (opcode & 0x00FF));
+					printf("Unimplemented 0x00%x. Exiting...\n", (opcode & 0x00FF));
 					exit(1);
 				}
 			}
@@ -107,7 +132,7 @@ void step(chip8_t *cpu)
 		}
 
 		case 0x1000: { // 1NNN: Jumps to address NNN.
-			printf("Jumping to 0x%x.\n", (opcode & 0x0FFF));
+			printf("Jumping to 0x0%x.\n", (opcode & 0x0FFF));
 			
 			/* Set the PC to the new value */
 			cpu->pc = (opcode & 0x0FFF);
@@ -178,12 +203,76 @@ void step(chip8_t *cpu)
 			printf("Adds NN to VX.\n");
 
 			/* Do the addition */
-			cpu->V[(opcode & 0x0F00) >> 8] += (opcode & 0x00FF);
+			uint8_t _x = (opcode & 0x0F00) >> 8;
+			uint8_t _nn = (opcode & 0x00FF);
+			cpu->V[_x] += _nn;
 
 			// Move to the next instruction
 			cpu->pc += 2;
 			break;
 		}			 
+
+		case 0x8000: { // Multivalued instruction, 8XYN
+			uint16_t _x = (opcode & 0x0F00) >> 8;
+			uint16_t _y = (opcode & 0x00F0) >> 4;
+			uint16_t _n = (opcode & 0x000F);
+			
+			switch (_n)
+			{
+				case 0x0: { // 8XY0 Sets VX to the value of VY.
+					printf("\tSetting VX to the value of VY.\n");
+					cpu->V[_x] = cpu->V[_y];
+
+					break;
+				}
+
+				case 0x2: { // 8XY2: Sets VX to VX and VY.
+					printf("\tSetting VX to VX and VY.\n");
+					cpu->V[_x] &= cpu->V[_y];
+
+					break;
+				}
+
+				// 8XY4: Adds VY to VX. VF is set to 1 when there's a carry, 
+				// and to 0 when there isn't.
+				case 0x4: { 
+					printf("\tAdds VY to VX.\n");
+					cpu->V[_x] += cpu->V[_y];
+
+					break;
+				}
+
+				// 8XY6: Shifts VX right by one. VF is set to the value of 
+				// the least significant bit of VX before the shift.
+				case 0x6: {
+					printf("\tShifted VX right by one bit.\n");
+					cpu->V[0xF] = (opcode & 0x1);
+					cpu->V[_x] >>= 0x1;
+
+					break;
+				}
+
+				default: {
+					printf("\tUnimplemented instruction.\n");
+					exit(1);
+				}
+			}
+		}
+
+		case 0x9000: { // 9XY0: Skips the next instruction if VX doesn't equal VY.
+			printf("Skips the next instruction if VX != VY.\n");
+			uint16_t _x = (opcode & 0x0F00) >> 8;
+			uint16_t _y = (opcode & 0x00F0) >> 4;
+
+			if (cpu->V[_x] != cpu->V[_y]) {
+				printf("\tSkipping.\n");
+				cpu->pc += 2;
+			}
+
+			// Move to the next instruction
+			cpu->pc += 2;
+			break;
+		}
 
 		case 0xA000: { // ANNN: Sets I to the address NNN.
 			printf("Setting I to 0x%x.\n", (opcode & 0x0FFF));
@@ -196,8 +285,24 @@ void step(chip8_t *cpu)
 			break;
 		}
 
+		case 0xB000: { // BNNN: Jumps to the address NNN plus V0.
+			printf("Jumping to 0x%x + V[0].\n", (opcode & 0x0FFF));
+			printf("\tV[0] = %i.\n", cpu->V[0]);
+
+			cpu->pc = (opcode & 0x0FFF) + cpu->V[0];
+			break;
+		}
+
 		case 0xC000: { // CXNN: Sets VX to a random number and NN.
-			printf("Setting VX to a random number and NN. (skipped)\n");
+			printf("Setting VX to a random number and NN.\n");
+			uint8_t _x = (opcode & 0x0F00) >> 8;
+			uint8_t _nn = opcode & 0x00FF;
+
+			uint16_t rand_number = rand();
+			rand_number &= _nn;
+
+			cpu->V[_x] = rand_number;
+			printf("RANDOM NUMBER: %x\n", rand_number);
 
 			// Move to the next instruction
 			cpu->pc += 2;
@@ -206,44 +311,44 @@ void step(chip8_t *cpu)
 
 		case 0xD000: { // DXYN: Draw a sprite from I to position X, Y
 			/* Parse out the values that's going to be needed */
-			uint8_t width = 8; // This value is always 8
-			uint8_t height = (opcode & 0x000F); // This value is always 8
-			uint8_t x_pos = (opcode & 0x0F00) >> 8;
-			uint8_t y_pos = (opcode & 0x00F0) >> 4;
+			uint16_t x = cpu->V[(opcode & 0x0F00) >> 8];
+			uint16_t y = cpu->V[(opcode & 0x00F0) >> 4];
+			uint16_t height = (opcode & 0x000F);
 
-			printf("Draw a sprite from I width height %i to X,Y.\n", height);
+			printf("Draw a sprite from I with height %i to x,y (%x,%x).\n", 
+					height, x, y);
 
-			/* Unset the carry flag before we start */
-			cpu->V[0xF] = 0;
+			// Reset the V[0xF] bit
+			cpu->V[0xF] = 0x0;
 
-			// Starting position for the drawing
-			// uint16_t *asdf = cpu->display[() + x_pos];
+			int _y, _x;
 
-			/* The actual drawing */
-			int _x, _y;
-			_x = _y = 0;
+			// For each row in the sprite
+			for (_y = 0; _y < height; _y++) {
+				// For each pixel
+				for (_x = 0; _x < 8; _x++) {
+					uint8_t pixel = (cpu->memory[cpu->I + _y] >> _x) & 0x1;
+					uint32_t display_index = (32 * (_y + y - 1)) + ((x + _x - 1));
 
-			// Iterate over the rows of the sprite
-			for (; _y < height; _y++) {
+					printf("%c", pixel ? 'x' : ' ');
 
-				// Get the old rows
+					if (pixel == 0) {
+						continue;
+					}
 
-				// Check if we need to set VF
-				// TODO: Invert the bits and & with it. If not 0xFFFF, set VF
+					if (cpu->display[display_index] ^ pixel)
+						cpu->V[0xF] = 0x1;
 
-				// Copy over the rows of the sprite to the video memory
+					cpu->display[display_index] = pixel;
+				}
+
+				printf("\n");
 			}
 
-			// Dump the video memory content
-			/*
-			int index = 0;
-			for (; index < (64 * 32); index++) {
-				if ((index % 64) == 0)
-					printf("\n");
-
-				printf("%c", cpu->display[index] ? ' ' : 'x');
-			}
-			*/
+			// 1xxxxxxx = 0x80
+			// x1xxxxxx = 0x40
+			// xx1xxxxx = 0x20
+			// xxx1xxxx = 0x10
 
 			// Move to the next instruction
 			cpu->pc += 2;
@@ -252,7 +357,7 @@ void step(chip8_t *cpu)
 
 		case 0xE000: { // Multivalued instruction
 			printf("Entering multivalued instruction with 0x%x\n\t", opcode);
-			uint8_t x = (opcode & 0x0F00) >> 8;
+			uint16_t _x = (opcode & 0x0F00) >> 8;
 
 			switch (opcode & 0x00FF) {
 
@@ -282,18 +387,26 @@ void step(chip8_t *cpu)
 		
 		case 0xF000: { // Multivalued instruction
 			printf("Entering multivalued instruction with 0xF%X\n\t", (opcode & 0x0FFF));
-			uint8_t x = (opcode & 0x0F00) >> 8;
+			uint16_t _x = (opcode & 0x0F00) >> 8;
 
 			switch (opcode & 0x00FF) 
 			{
 				// FX07: Sets VX to the value of the delay timer.
 				case 0x07: {
-					printf("Setting VX to the value of the delay timer. (skipped)\n");
+					printf("Setting VX to the value of the delay timer.\n");
+					cpu->V[_x] = cpu->delay_timer;
 					break;
 				}
 
 				case 0x15: { // FX15: Sets the delay timer to VX.
-					printf("Setting delay time to VX. (skipped)\n");
+					printf("Setting delay timer to VX.\n");
+					cpu->delay_timer = cpu->V[_x];
+					break;
+				}
+
+				case 0x18: { // FX18: Sets the sound timer to VX.
+					printf("Setting sound timer to VX.\n");
+					cpu->sound_timer = cpu->V[_x];
 					break;
 				}
 
@@ -303,14 +416,20 @@ void step(chip8_t *cpu)
 					/* If it overflows we need to set the carry flag */
 					/* NOTE: Kinda cool that the compiler complained when tried
 					 * using a uint8_t since that always will be false */
-					uint16_t _i = cpu->I + cpu->V[x];
+					uint16_t _i = cpu->I + cpu->V[_x];
 					if (_i > 0xFFF) {
 						printf("Overflow: Setting carry flag\n\t");
 						cpu->V[0xF] = 1;
 					}
 
 					/* Do the addition */
-					cpu->I = _i;
+					cpu->I += _i;
+					break;
+				}
+
+				// FX29: Sets I to the location of the sprite for the character in VX. 
+				// Characters 0-F (in hexadecimal) are represented by a 4x5 font.
+				case 0x29: {
 					break;
 				}
 
@@ -319,6 +438,41 @@ void step(chip8_t *cpu)
 				// I[0] = 1, I[1] = 5, I[2] = 6
 				case 0x33: {
 					printf("Storing a binary-coded representation of VX at I. (skipped)\n"); 
+					printf("\tVX = %i\n", cpu->V[_x]);
+					uint8_t hundreds, tens, ones;
+					hundreds = tens = ones = 0;
+
+					// Calculate the new value
+					hundreds = cpu->V[_x] / 100;
+					tens = (cpu->V[_x] / 10) - (hundreds * 10);
+					ones = cpu->V[_x] % 10;
+					
+					printf("Hundreds: %i\n", hundreds);
+					printf("Tens: %i\n", tens);
+					printf("Ones: %i\n", ones);
+
+					// Set them at I
+					cpu->memory[cpu->I] = hundreds;
+					cpu->memory[cpu->I + 1] = tens;
+					cpu->memory[cpu->I + 2] = ones;
+					break;
+				}
+
+				// FX55: Stores V0 to VX in memory starting at address I.
+				case 0x55: {
+					printf("Stores V0...VX in memory at I. (skipped)\n");
+
+					uint16_t _x = (opcode & 0x0F00) >> 8;
+					memcpy(&cpu->memory[cpu->I], cpu->V, _x);
+					break;
+				}
+				
+				// FX65: Fills V0 to VX with values from memory starting at address I.
+				case 0x65: {
+					printf("Stores values from I in V0...VX.\n");
+
+					uint16_t _x = (opcode & 0x0F00) >> 8;
+					memcpy(cpu->V, &cpu->memory[cpu->I], _x);
 					break;
 				}
 
@@ -340,6 +494,10 @@ void step(chip8_t *cpu)
 			break;
 		}
 	}
+
+	// Count down the timers
+	cpu->sound_timer -= 1;
+	cpu->delay_timer -= 1;
 }
 
 /* Return the display matrix */
@@ -351,6 +509,8 @@ void *get_display(chip8_t *cpu)
 /* Function which steps through the program */
 void run_chip(chip8_t *cpu)
 {
-	for (;;)
+	for (;;) {
+		usleep(10 * 1000);
 		step(cpu);
+	}
 }

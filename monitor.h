@@ -15,7 +15,10 @@ void init_monitor(SDL_Surface **, char *);
 /* Functions for freeing all SDL resources */
 void free_monitor(SDL_Surface *);
 
+/* Draw rectangle at x,y position */
+void draw_pixel(uint8_t, uint8_t, SDL_Surface *);
+
 /* A function which handles the refreshing of the screen */
-void draw_monitor(SDL_Surface *, void *);
+void draw_monitor(SDL_Surface *, uint8_t *);
 
 #endif
