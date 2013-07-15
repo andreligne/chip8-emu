@@ -47,6 +47,7 @@ void init_chip(chip8_t *cpu)
 
 	// Set default values for pointers
 	cpu->stackPointer = 0;
+	cpu->keys = 0x0;
 	cpu->pc = 0x200;
 	cpu->I = 0;
 }
@@ -271,6 +272,13 @@ void step(chip8_t *cpu)
 					printf("\tAdds VY to VX.\n");
 					cpu->V[_x] += cpu->V[_y];
 
+					break;
+				}
+				
+				// 8XY5: VY is subtracted from VX. VF is set to 0 when there's 
+				// a borrow, and 1 when there isn't.
+				case 0x5: {
+					printf("\tVY is subtracted from VX. (skipped)\n");
 					break;
 				}
 
@@ -553,7 +561,7 @@ uint8_t *get_display(chip8_t *cpu)
 void run_chip(chip8_t *cpu)
 {
 	for (;;) {
-		usleep(10 * 1000);
+		usleep(16 * 1000);
 		step(cpu);
 	}
 }

@@ -46,6 +46,9 @@ typedef struct {
 	// The screen matris
 	uint8_t *display; // The screen matris
 
+	// The keys 0x0-0xF
+	uint16_t keys;
+
 	// Timers
 	uint16_t sound_timer;
 	uint16_t delay_timer;
