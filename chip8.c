@@ -237,6 +237,13 @@ void step(chip8_t *cpu)
 					break;
 				}
 
+				case 0x3: { // 8XY3: Sets VX to VX xor VY.
+					printf("\tSetting VX to VX xor VY.\n");
+					cpu->V[_x] ^= cpu->V[_y];
+
+					break;
+				}
+
 				// 8XY4: Adds VY to VX. VF is set to 1 when there's a carry, 
 				// and to 0 when there isn't.
 				case 0x4: { 
