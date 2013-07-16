@@ -50,9 +50,10 @@ typedef struct {
 	uint16_t keys;
 
 	// Timers
-	uint16_t sound_timer;
-	uint16_t delay_timer;
+	uint16_t soundTimer;
+	uint16_t delayTimer;
 	
+	uint8_t drawFlag;
 	uint8_t stackPointer; // The stack pointer
 	uint16_t pc; // The PC
 } chip8_t;
@@ -74,6 +75,9 @@ void tick(chip8_t *);
 
 /* Return the display matrix */
 uint8_t *get_display(chip8_t *);
+
+/* Return the drawFlag */
+uint8_t get_drawFlag(chip8_t *);
 
 /* Function which steps through the program */
 void run_chip(chip8_t *);

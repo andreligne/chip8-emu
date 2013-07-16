@@ -28,7 +28,9 @@ void init_chip(chip8_t *cpu)
 	memset(cpu->memory, 0x00, 4096);
 
 	// Set the fontset
-	memcpy(cpu->memory, c8_fontset, 0x80);
+	uint8_t index = 0;
+	for (; index < 0x80; index++)
+		cpu->memory[index] = c8_fontset[index];
 
 	// Allocate memory for the register. It has 16 8-bit data registers.
 	cpu->V = malloc(16);
@@ -42,10 +44,11 @@ void init_chip(chip8_t *cpu)
 	memset(cpu->display, 0, 64*32);
 
 	// Set default value for the timers
-	cpu->delay_timer = 0;
-	cpu->sound_timer = 0;
+	cpu->delayTimer = 0;
+	cpu->soundTimer = 0;
 
 	// Set default values for pointers
+	cpu->drawFlag = 0;
 	cpu->stackPointer = 0;
 	cpu->keys = 0x0;
 	cpu->pc = 0x200;
@@ -389,6 +392,8 @@ void step(chip8_t *cpu)
 			// x1xxxxxx = 0x40
 			// xx1xxxxx = 0x20
 			// xxx1xxxx = 0x10
+			//
+			cpu->drawFlag = 1;
 
 			// Move to the next instruction
 			cpu->pc += 2;
@@ -434,19 +439,19 @@ void step(chip8_t *cpu)
 				// FX07: Sets VX to the value of the delay timer.
 				case 0x07: {
 					printf("Setting VX to the value of the delay timer.\n");
-					cpu->V[_x] = cpu->delay_timer;
+					cpu->V[_x] = cpu->delayTimer;
 					break;
 				}
 
 				case 0x15: { // FX15: Sets the delay timer to VX.
 					printf("Setting delay timer to VX.\n");
-					cpu->delay_timer = cpu->V[_x];
+					cpu->delayTimer = cpu->V[_x];
 					break;
 				}
 
 				case 0x18: { // FX18: Sets the sound timer to VX.
 					printf("Setting sound timer to VX.\n");
-					cpu->sound_timer = cpu->V[_x];
+					cpu->soundTimer = cpu->V[_x];
 					break;
 				}
 
@@ -473,7 +478,7 @@ void step(chip8_t *cpu)
 					printf("Setting I to the location of char %x.\n", _x);
 
 					// One character takes up 5 bytes
-					cpu->I = _x * 5;
+					cpu->I = (cpu->V[_x] * 5);
 					break;
 				}
 
@@ -540,15 +545,16 @@ void step(chip8_t *cpu)
 	}
 
 	// Count down the timers
-	cpu->sound_timer -= 1;
-	cpu->delay_timer -= 1;
+	if (cpu->soundTimer > 0)
+		cpu->soundTimer -= 1;
+
+	if (cpu->soundTimer > 0)
+		cpu->delayTimer -= 1;
 }
 
 /* Tick the timers on the cpu */
 void tick(chip8_t *cpu)
 {
-	cpu->delay_timer -= 1;
-	cpu->sound_timer -= 1;
 }
 
 /* Return the display matrix */
@@ -557,11 +563,20 @@ uint8_t *get_display(chip8_t *cpu)
 	return cpu->display;
 }
 
+/* Return and reset the drawFlag */
+uint8_t get_drawFlag(chip8_t *cpu)
+{
+	if (cpu->drawFlag == 0)
+		return 0;
+
+	return cpu->drawFlag--;
+}
+
 /* Function which steps through the program */
 void run_chip(chip8_t *cpu)
 {
 	for (;;) {
-		usleep(16 * 1000);
+		usleep(5 * 1000);
 		step(cpu);
 	}
 }

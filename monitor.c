@@ -12,7 +12,7 @@ void init_monitor(SDL_Surface **screen, char *filename)
 	SDL_WM_SetCaption("chip8-emu", filename);
 
 	/* Create the window */
-	*screen = SDL_SetVideoMode(640, 320, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
+	*screen = SDL_SetVideoMode(640, 320, 32, SDL_DOUBLEBUF | SDL_HWSURFACE);
 
 	/* Should start a thread for refreshing the window here */
 }

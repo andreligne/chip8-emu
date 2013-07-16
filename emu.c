@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 
 	// Start the threads
 	emulator_thread = malloc(sizeof(pthread_t));
-	pthread_create(emulator_thread, NULL, (void *)&run_chip, cpu);
+	//pthread_create(emulator_thread, NULL, (void *)&run_chip, cpu);
 	
 	// Run the main program
 	while (!quiting) {
@@ -60,11 +60,13 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		tick(cpu);
-		draw_monitor(g_scr, get_display(cpu));
+		// TODO: Should try to emulate the speed of the cpu
+		step(cpu);
+
+		if (get_drawFlag(cpu))
+			draw_monitor(g_scr, get_display(cpu));
 
 		// Sleep so we get a fps of 60
-		usleep(160 * 1000);
 	}
 
 	// Stop and the threads
