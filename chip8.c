@@ -141,9 +141,9 @@ void step(chip8_t *cpu)
 
 		case 0x1000: { // 1NNN: Jumps to address NNN.
 			printf("Jumping to 0x0%x.\n", (opcode & 0x0FFF));
+			
 			/* Set the PC to the new value */
 			cpu->pc = (opcode & 0x0FFF);
-
 			break;
 		}
 
@@ -160,26 +160,37 @@ void step(chip8_t *cpu)
 
 		case 0x3000: { // 3XNN: Skips the next instruction if VX equals NN.
 			printf("Skip if VX equals NN ");
-			uint8_t _x = (opcode & 0x0F00) >> 8;
-			uint8_t _nn = opcode & 0x00FF;
 
-			if (cpu->V[_x] == _nn) {
+			/* Print out the values */
+			printf("(V[0x%X] = 0x%X and NN = 0x%X). ", (opcode & 0x0F00) >> 8,
+												cpu->V[(opcode & 0x0F00) >> 8],
+												opcode & 0x00FF);
+
+			if (cpu->V[(opcode & 0x0F00) >> 8] == (opcode & 0x00FF)) {
 				printf("Skipping.\n");
-				cpu->pc += 4;
+				cpu->pc += 2;
+			} else {
+				printf("Not skipping.\n");
 			}
 
+			// Move to the next instruction
 			cpu->pc += 2;
 			break;
 		}
 
-		case 0x4000: { // 4XNN: Skips the next instruction if VX doesn't equal NN
+		case 0x4000: { // 4XNN:: Skips the next instruction if VX doesn't equal NN
 			printf("Skip if VX doesn't equals NN");
-			uint8_t _x = (opcode & 0x0F00) >> 8;
-			uint8_t _nn = opcode & 0x00FF;
 
-			if (cpu->V[_x] != _nn) {
+			/* Print out the values */
+			printf("(V[0x%X] = 0x%X and NN = 0x%X). ", (opcode & 0x0F00) >> 8,
+												cpu->V[(opcode & 0x0F00) >> 8],
+												opcode & 0x00FF);
+
+			if (cpu->V[(opcode & 0x0F00) >> 8] != (opcode & 0x00FF)) {
 				printf("Skipping.\n");
 				cpu->pc += 2;
+			} else {
+				printf("Not skipping.\n");
 			}
 
 			// Move to the next instruction
@@ -190,7 +201,7 @@ void step(chip8_t *cpu)
 		case 0x5000: { // 5XY0: Skips the next instruction if VX equals VY.
 			printf("Skipping the next instruction if VX == VY.\n");
 			uint8_t _x = (opcode & 0x0F00) >> 8;
-			uint8_t _y = (opcode & 0x00F0) >> 4;
+			uint8_t _y = (opcode & 0x0F00) >> 4;
 
 			if (cpu->V[_x] == cpu->V[_y]) {
 				printf("\tSkipping...\n");
@@ -202,11 +213,8 @@ void step(chip8_t *cpu)
 		}
 
 		case 0x6000: { // 6XNN: Sets VX to NN.
-			uint8_t _x = (opcode & 0x0F00) >> 8;
-			uint8_t _nn = opcode & 0x00FF;
-
-			printf("Setting V[%x] to 0x%x.\n", _x, _nn);
-			cpu->V[_x] = _nn;
+			printf("Setting VX to 0x%x.\n", (opcode & 0x00FF));
+			cpu->V[(opcode & 0x0F00) >> 8] = (opcode & 0x00FF);
 
 			// Move to the next instruction
 			cpu->pc += 2;
@@ -214,13 +222,12 @@ void step(chip8_t *cpu)
 		}
 
 		case 0x7000: { // 7XNN: Adds NN to VX.
+			printf("Adds NN to VX.\n");
 
 			/* Do the addition */
 			uint8_t _x = (opcode & 0x0F00) >> 8;
-			uint8_t _nn = opcode & 0x00FF;
+			uint8_t _nn = (opcode & 0x00FF);
 			cpu->V[_x] += _nn;
-
-			printf("Adds %x to V[%x].\n", _nn, _x);
 
 			// Move to the next instruction
 			cpu->pc += 2;
@@ -228,9 +235,9 @@ void step(chip8_t *cpu)
 		}			 
 
 		case 0x8000: { // Multivalued instruction, 8XYN
-			uint8_t _x = (opcode & 0x0F00) >> 8;
-			uint8_t _y = (opcode & 0x00F0) >> 4;
-			uint8_t _n = opcode & 0x000F;
+			uint16_t _x = (opcode & 0x0F00) >> 8;
+			uint16_t _y = (opcode & 0x00F0) >> 4;
+			uint16_t _n = (opcode & 0x000F);
 			
 			switch (_n)
 			{
@@ -266,15 +273,13 @@ void step(chip8_t *cpu)
 				// and to 0 when there isn't.
 				case 0x4: { 
 					printf("\tAdds VY to VX.\n");
-					uint16_t result = (cpu->V[_x] + cpu->V[_y]);
-					cpu->V[0xF] = 0;
+					uint16_t result = cpu->V[_x] += cpu->V[_y];
 
 					if (result > 0x00FF)
 						cpu->V[0xF] = 1;
 
-					cpu->V[_x] = result & 0x00FF;
+					cpu->V[_x] = result;
 
-					printf("\tV[%x] is now %x.\n", _x, cpu->V[_x]);
 					break;
 				}
 				
@@ -301,17 +306,15 @@ void step(chip8_t *cpu)
 				}
 			}
 
+			// Every instruction in this will not modify the pc in any way
 			cpu->pc += 2;
 			break;
 		}
 
 		case 0x9000: { // 9XY0: Skips the next instruction if VX doesn't equal VY.
 			printf("Skips the next instruction if VX != VY.\n");
-			uint8_t _x = (opcode & 0x0F00) >> 8;
-			uint8_t _y = (opcode & 0x00F0) >> 4;
-
-			printf("x = %x, y = %x, V[x] = %x, V[y] = %x\n",
-					_x, _y, cpu->V[_x], cpu->V[_y]);
+			uint16_t _x = (opcode & 0x0F00) >> 8;
+			uint16_t _y = (opcode & 0x00F0) >> 4;
 
 			if (cpu->V[_x] != cpu->V[_y]) {
 				printf("\tSkipping.\n");
@@ -327,7 +330,7 @@ void step(chip8_t *cpu)
 			printf("Setting I to 0x%x.\n", (opcode & 0x0FFF));
 
 			/* Set I to NNN */
-			cpu->I = opcode & 0x0FFF;
+			cpu->I = (opcode & 0x0FFF);
 
 			// Move to the next instruction
 			cpu->pc += 2;
@@ -584,7 +587,7 @@ uint8_t get_drawFlag(chip8_t *cpu)
 void run_chip(chip8_t *cpu)
 {
 	for (;;) {
-		usleep(30 * 1000);
+		//usleep(160 * 1000);
 		step(cpu);
 	}
 }
