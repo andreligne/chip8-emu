@@ -53,7 +53,10 @@ void draw_monitor(SDL_Surface *screen, uint8_t *display)
 		// Draw the pixels on the screen
 		for (; column < 64; column++) {
 			uint8_t pixel = display[(64 * row) + column];
-			if (pixel == 0) continue;
+
+			// Don't paint a pixel if there's not need for it
+			if (pixel == 0)
+				continue;
 
 			draw_pixel(column, row, screen);
 		}

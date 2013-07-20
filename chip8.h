@@ -73,6 +73,8 @@ void step(chip8_t *);
 /* Tick the timers on the cpu */
 void tick(chip8_t *);
 
+void unset_drawFlag(chip8_t *);
+
 /* Return the display matrix */
 uint8_t *get_display(chip8_t *);
 
